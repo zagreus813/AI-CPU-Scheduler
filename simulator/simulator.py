@@ -30,7 +30,7 @@ class Simulator:
         self.cpu_idle_time = 0
         self.context_switch_count = 0
         self.context_switch_time = 0
-        
+        self.has_dispatched = False 
         # Initialization
         self._initialize_events()
 
@@ -45,28 +45,86 @@ class Simulator:
         heapq.heappush(self.events, event)
 
     def run(self) -> SimulationResult:
+
         while self.events:
-            event = heapq.heappop(self.events)
-            
-            # Fast-forward time to event time
-            if event.time > self.current_time:
-                # If CPU was completely idle (not even context switching), record it
+
+            # Get next timestamp
+            next_time = self.events[0].time
+
+
+            # Advance clock
+            if next_time > self.current_time:
+
                 if not self.cpu_busy:
-                    self.cpu_idle_time += (event.time - self.current_time)
-                self.current_time = event.time
-                
-            if event.event_type == EventType.PROCESS_ARRIVAL:
-                self._handle_process_arrival(event.process)
-            elif event.event_type == EventType.PROCESS_DISPATCH:
-                self._handle_process_dispatch(event.process)
-            elif event.event_type == EventType.QUANTUM_EXPIRE:
-                self._handle_quantum_expire(event.process)
-            elif event.event_type == EventType.CPU_BURST_COMPLETE:
-                self._handle_cpu_burst_complete(event.process)
-            elif event.event_type == EventType.IO_COMPLETE:
-                self._handle_io_complete(event.process)
+                    self.cpu_idle_time += (
+                        next_time - self.current_time
+                    )
+
+                self.current_time = next_time
+
+
+            # Process ALL events at this timestamp
+            current_events = []
+
+            while (
+                self.events
+                and
+                self.events[0].time == self.current_time
+            ):
+
+                current_events.append(
+                    heapq.heappop(self.events)
+                )
+
+
+            # Handle events
+            for event in current_events:
+
+                if event.event_type == EventType.PROCESS_ARRIVAL:
+
+                    self._handle_process_arrival(
+                        event.process,
+                        schedule=False
+                    )
+
+
+                elif event.event_type == EventType.PROCESS_DISPATCH:
+
+                    self._handle_process_dispatch(
+                        event.process
+                    )
+
+
+                elif event.event_type == EventType.QUANTUM_EXPIRE:
+
+                    self._handle_quantum_expire(
+                        event.process
+                    )
+
+
+                elif event.event_type == EventType.CPU_BURST_COMPLETE:
+
+                    self._handle_cpu_burst_complete(
+                        event.process
+                    )
+    
+
+                elif event.event_type == EventType.IO_COMPLETE:
+
+                    self._handle_io_complete(
+                        event.process,
+                        schedule=False
+                    )
+
+
+            # After all events at this time
+            # ask scheduler once
+
+            self._invoke_scheduler()
+
 
         self.total_time = self.current_time
+
 
         return SimulationResult(
             processes=self.processes,
@@ -77,13 +135,21 @@ class Simulator:
             context_switch_count=self.context_switch_count,
             context_switch_time=self.context_switch_time
         )
+    def _handle_process_arrival(
+        self,
+        process,
+        schedule=True
+    ):
 
-    def _handle_process_arrival(self, process: Process):
-        process.mark_ready(self.current_time)
+        process.mark_ready(
+            self.current_time
+        )
+
         self.ready_queue.append(process)
-        
-        self._invoke_scheduler()
 
+
+        if schedule:
+            self._invoke_scheduler()
     def _handle_process_dispatch(self, process: Process):
         if self.running_process is not None:
             raise RuntimeError("Cannot dispatch a process when CPU is already running a process.")
@@ -148,13 +214,23 @@ class Simulator:
             
         self._invoke_scheduler()
 
-    def _handle_io_complete(self, process: Process):
-        self.blocked_processes.remove(process)
-        process.complete_io(self.current_time)
-        self.ready_queue.append(process)
-        
-        self._invoke_scheduler()
+    def _handle_io_complete(
+        self,
+        process,
+        schedule=True
+    ):
 
+        self.blocked_processes.remove(process)
+
+        process.complete_io(
+            self.current_time
+        )
+
+        self.ready_queue.append(process)
+
+
+        if schedule:
+            self._invoke_scheduler()
     def _invoke_scheduler(self):
         if self.cpu_busy:
             return  # CPU is busy (either running or context switching)
@@ -172,7 +248,7 @@ class Simulator:
             dispatch_time = self.current_time
             
             # Apply context switch overhead
-            if self.context_switch_cost > 0:
+            if self.context_switch_cost > 0 and self.has_dispatched:
                 self.context_switch_count += 1
                 self.context_switch_time += self.context_switch_cost
                 
@@ -188,3 +264,4 @@ class Simulator:
                 selected_process.record_context_switch()
 
             self._schedule_event(dispatch_time, EventType.PROCESS_DISPATCH, selected_process)
+            self.has_dispatched = True
