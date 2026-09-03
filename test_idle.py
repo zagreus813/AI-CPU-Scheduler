@@ -9,11 +9,12 @@ p = Process(
     io_bursts=[],
 )
 
+from schedulers.fcfs import FCFSScheduler
 
 sim = Simulator(
-    processes=[p]
+    processes=[p],
+    scheduler=FCFSScheduler()
 )
-
 
 result = sim.run()
 

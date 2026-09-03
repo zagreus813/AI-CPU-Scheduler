@@ -1,331 +1,188 @@
 # AI CPU Scheduler
 
-An Operating System scheduling simulator combined with Machine Learning research infrastructure.
+An advanced Operating System scheduling simulator combined with a Machine Learning research infrastructure.
 
-The goal of this project is to build an AI-based CPU scheduler by first creating a realistic OS simulation environment, generating scheduling data, and then training ML models to make scheduling decisions.
+The core ambition of this project is to build an **AI-based CPU scheduler**. We are achieving this by first creating a highly realistic OS simulation environment, extracting detailed scheduling datasets, and then using that data to train Machine Learning models capable of making intelligent scheduling decisions.
 
 ---
 
 # Project Goal
 
-Traditional CPU schedulers such as FCFS, SJF, Priority, and Round Robin use predefined rules.
+Traditional CPU schedulers—such as FCFS (First-Come, First-Served), SJF (Shortest Job First), Priority, and Round Robin—rely on static, predefined rules. While effective in predictable environments, they struggle to dynamically adapt to highly volatile, mixed workloads.
 
-This project explores:
-
-- Can machine learning predict better scheduling decisions?
-- Can an AI scheduler adapt to different workloads?
-- Can we optimize multiple objectives:
-  - Waiting time
-  - Response time
-  - Turnaround time
-  - CPU utilization
-  - Context switching overhead
-
----
-
-# Architecture
-Workload Generator
-|
-v
-Process Model
-|
-v
-Event Driven OS Simulator
-|
-v
-Scheduler Interface
-|
-+----------------+
-| |
-v v
-
-Traditional Future AI
-Schedulers Scheduler
-
-FCFS ML Model
-SJF Oracle
-Priority
-Round Robin
-
+This project explores several key research questions:
+- Can machine learning accurately predict better scheduling decisions than static algorithms?
+- Can an AI-driven scheduler dynamically adapt its strategy to different workloads on the fly?
+- Can we effectively optimize for multiple, often conflicting objectives simultaneously, such as:
+  - Minimizing Average Waiting Time
+  - Minimizing Response Time (Crucial for interactive processes)
+  - Minimizing Turnaround Time
+  - Maximizing overall CPU Utilization
+  - Minimizing Context Switching Overhead
 
 ---
 
-# Project Phases
+# Architecture Overview
+
+The system architecture is designed in modular phases, ensuring strict separation of concerns between the workload generation, the core OS simulation, and the decision-making scheduling policies.
+
+```text
+    Workload Generator
+           |
+           v
+     Process Model
+           |
+           v
+ Event-Driven OS Simulator
+           |
+           v
+  Scheduler Interface
+           |
+  +-----------------+
+  |                 |
+  v                 v
+Traditional      Future AI
+Schedulers       Scheduler
+  - FCFS          - ML Model
+  - SJF Oracle
+  - Priority
+  - Round Robin
+```
+
+---
+
+# Completed Project Phases
 
 ## Phase 1 — Process Model and Workload Generation
-
-Completed.
-
-Implemented:
-
-- Realistic process model
-- CPU burst generation
-- I/O burst generation
-- Process types:
-  - CPU bound
-  - IO bound
-  - Interactive
-  - Batch
-
-Validation:
-
-
-Generated processes: 5000
-
-Total CPU bursts: 38589
-Total I/O bursts: 33589
-
-Potential ML samples:
-38589
-
-
-Stress test:
-
-
-Processes:
-100000
-
-Potential ML samples:
-766142
-
-
-Status:
-
-✅ PASS
-
----
-
-# Phase 2 — Event Driven OS Simulator
-
-Completed.
-
-Implemented:
-
-- Event queue simulation
-- Process lifecycle
-- CPU execution
-- I/O blocking
-- Multiple CPU bursts
-- Context switch modeling
-- CPU idle tracking
-- Timeline generation
-- Preemption support
-
-Supported events:
-
-
-PROCESS_ARRIVAL
-
-PROCESS_DISPATCH
-
-CPU_BURST_COMPLETE
-
-IO_COMPLETE
-
-QUANTUM_EXPIRE
-
-
-Validation:
-
-Tests:
-
-
-test_phase2_simulator.py
-
-test_phase2_io.py
-
-test_phase2_multi.py
-
-test_phase2_concurrent_io.py
-
-test_phase2_preemption.py
-
-
-Status:
-
-✅ PASS
-
----
-
-# Phase 3 — Scheduler Architecture
-
-Completed.
-
-Scheduler abstraction introduced:
-
-
-BaseScheduler
-|
-+-- FCFS
-|
-+-- SJF Oracle
-|
-+-- Priority
-|
-+-- Round Robin
-
-
-Scheduler responsibilities:
-
-Only:
-
-
-select next process
-
-
-Scheduler does NOT:
-
-- advance time
-- execute CPU
-- handle I/O
-- modify process state
-
----
-
-# Phase 3.5 — Benchmark Framework
-
-Completed.
-
-Implemented:
-
-- Benchmark runner
-- Scheduler comparison
-- Metrics calculation
-- JSON export
-- CSV export
-
-Metrics:
-
-- Average waiting time
-- Average turnaround time
-- Average response time
-- CPU utilization
-- Throughput
-- Context switches
-- Context switch overhead
-- Context switch ratio
-
-
----
-
-# Benchmark Result
-
-Configuration:
-
-
-Processes:
-1000
-
-Seed:
-42
-
-Profile:
-mixed
-
-
-Results:
-
-
-Scheduler Waiting Response
-
-FCFS 93344.18 10615.88
-
-SJF 38294.71 21672.61
-
-Priority 40113.58 32322.00
-
-RoundRobin 84238.79 1441.39
-
-
-Observations:
-
-- SJF provides lowest waiting time.
-- Round Robin provides best response time.
-- Round Robin has higher context switching overhead.
-- Different workloads require different scheduling strategies.
+**Status: ✅ Completed**
+
+Replaced simplistic single-burst models with a highly realistic, stateful OS workload model.
+
+**Features:**
+- **Realistic Process Model**: Supports multiple, alternating CPU bursts and I/O wait periods.
+- **Process Types**: Capable of generating processes with distinct behavioral profiles, including:
+  - `cpu_bound`: Long CPU bursts, minimal I/O.
+  - `io_bound`: Short CPU bursts, frequent I/O waits.
+  - `interactive`: Highly responsive, lots of short CPU and I/O cycles.
+  - `batch`: Low priority, heavy computation processes.
+- **Workload Generator**: A fully reproducible, seed-based generator capable of spinning up stress tests of over 100,000+ processes for future ML training dataset generation.
+
+## Phase 2 — Event-Driven OS Simulator
+**Status: ✅ Completed**
+
+Developed a robust, highly efficient OS simulation engine.
+
+**Features:**
+- **Event-Based Architecture**: Avoids inefficient unit-time stepping by fast-forwarding the global clock to critical events (`PROCESS_ARRIVAL`, `PROCESS_DISPATCH`, `CPU_BURST_COMPLETE`, `IO_COMPLETE`, `QUANTUM_EXPIRE`).
+- **Timestamp Event Batching**: All events occurring at the exact same millisecond are processed together before the scheduler is asked to make a new decision.
+- **First Dispatch Optimization**: Initial process dispatch does not incur context switch overhead; only active process-to-process preemptions register an overhead cost.
+- **Complex OS Mechanics**: Full support for preemption, concurrent I/O blocking, context switch overhead tracking, and precise CPU idle time tracking.
+
+## Phase 3 — Scheduler Architecture
+**Status: ✅ Completed**
+
+Completely decoupled the simulation engine from the scheduling decision logic. 
+
+**Features:**
+- **Strict Separation of Concerns**: Schedulers are *only* allowed to select the next process. They cannot advance time, execute CPU cycles, handle I/O, or manually modify process states.
+- **Baseline Implementations**:
+  - `FCFSScheduler`
+  - `SJFOracleScheduler` (Uses theoretical knowledge of the next exact burst)
+  - `PriorityScheduler`
+  - `RoundRobinScheduler`
+
+## Phase 3.5 — Benchmark Framework
+**Status: ✅ Completed**
+
+Introduced a benchmarking framework to run identical workloads across multiple schedulers for fair comparison.
+
+**Features:**
+- **Metrics Engine**: Calculates average waiting time, turnaround time, response time, CPU utilization, throughput, context switches, and context switch overhead.
+- **Export Capabilities**: Automatically saves benchmark reports to both JSON and CSV in the `results/` directory.
+
+### Current Benchmark Results (1,000 Processes, Mixed Profile)
+| Scheduler | Waiting Time | Response Time |
+|-----------|--------------|---------------|
+| **FCFS** | 93344.18 | 10615.88 |
+| **SJF Oracle** | 38294.71 | 21672.61 |
+| **Priority** | 40113.58 | 32322.00 |
+| **Round Robin** | 84238.79 | 1441.39 |
+
+*Observations:* SJF predictably provides the lowest overall waiting time, while Round Robin excels at minimizing response time (at the cost of significantly higher context switching overhead).
+
+## Phase 4 — AI Dataset Generation Pipeline
+**Status: ✅ Completed**
+
+Transformed the simulator into a robust data generation pipeline for future Machine Learning models.
+
+**Features:**
+- **DecisionLogger Proxy**: Implements a Wrapper pattern around existing traditional schedulers. It seamlessly intercepts the `select_process` call, records the system and candidate features, delegates the decision to the traditional scheduler, and logs the choice.
+- **Time-Traveling Outcome Labels**: At the end of the simulation, the logger traverses all generated decision records and pulls the *final* execution metrics (actual waiting time, turnaround time, CPU usage) from the completed Process objects, attaching them as target labels for the ML models.
+- **Deep Feature Extraction**: Logs detailed system state (e.g., `cpu_utilization`, `system_load`) and process state (e.g., `cpu_history`, `io_history`, `remaining_cpu_time`) at every single scheduling decision point.
+- **Learning-to-Rank Format**: Datasets are exported as CSVs where each row represents a candidate available in the Ready Queue during a scheduling decision, labeled with a binary `selected` target.
 
 ---
 
 # Repository Structure
 
-
-OSML/
-
-benchmark/
-runner.py
-metrics.py
-report.py
-export.py
-
-simulator/
-simulator.py
-process.py
-event.py
-
-schedulers/
-base.py
-fcfs.py
-sjf_oracle.py
-priority.py
-round_robin.py
-
-results/
-benchmark_seed42.json
-benchmark_seed42.csv
-
+```text
+AI-CPU-Scheduler/
+├── benchmark/               # Framework for evaluating and exporting scheduler metrics
+│   ├── runner.py
+│   ├── metrics.py
+│   ├── report.py
+│   └── export.py
+├── dataset/                 # AI Dataset Generation Pipeline (Phase 4)
+│   ├── dataset_generator.py # Orchestrates simulation and dataset CSV export
+│   ├── feature_extractor.py # Extracts features from processes and system state
+│   └── logger.py            # Proxy wrapper for logging scheduler decisions
+├── results/                 # Output directory for benchmark JSON/CSV reports
+├── schedulers/              # Traditional scheduling algorithms (Phase 3)
+│   ├── base.py
+│   ├── fcfs.py
+│   ├── sjf_oracle.py
+│   ├── priority.py
+│   └── round_robin.py
+├── simulator/               # Core OS Event-Driven Simulation Engine (Phase 1 & 2)
+│   ├── event.py
+│   ├── process.py
+│   ├── simulator.py
+│   └── workload_generator.py
+└── main.py                  # Entry point for the application
+```
 
 ---
 
-# Running
+# Running the Project
 
-Install:
+**Install Dependencies:**
+```bash
+python3 -m pip install pytest
+```
 
+**Run Tests:**
+```bash
+python3 -m pytest
+```
 
-python3 -m pip install numpy
-
-
-Run benchmark:
-
-
+**Run Benchmark:**
+```bash
 python3 test_full_benchmark.py
+```
 
+**Generate ML Dataset:**
+```bash
+python3 -m dataset.dataset_generator
+```
 
 ---
 
 # Future Work
 
-## Phase 4
+## Phase 5 — Machine Learning Scheduler
+With our rich dataset pipeline complete, the next phase focuses entirely on training the ML models.
 
-AI Dataset Generation:
-
-Generate scheduling decision data:
-
-Features:
-
-- Ready queue state
-- Process history
-- CPU bursts
-- I/O behavior
-- Priority
-- Workload characteristics
-
-Labels:
-
-- Best next process
-
----
-
-## Phase 5
-
-Machine Learning Scheduler:
-
-Models:
-
-- Regression models
-- Decision trees
-- Neural networks
-- Reinforcement learning
-
-Goal:
-
-Replace rule-based scheduling with adaptive AI scheduling.
+**Objectives:**
+- Train Regression models to predict CPU burst lengths (acting as an AI-driven SJF).
+- Train Classification / Learning-to-Rank models to directly select the optimal process from the Ready Queue.
+- Evaluate Decision Trees and Neural Networks against the established Phase 3.5 baselines to measure the real-world efficiency of AI-based scheduling.
