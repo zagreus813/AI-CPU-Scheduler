@@ -1,7 +1,7 @@
 from schedulers.base import BaseScheduler
 
 
-class FCFSScheduler(BaseScheduler):
+class SJFOracleScheduler(BaseScheduler):
 
     def select_process(
         self,
@@ -16,5 +16,5 @@ class FCFSScheduler(BaseScheduler):
 
         return min(
             ready_queue,
-            key=lambda p: p.ready_since
+            key=lambda p: p.remaining_cpu_time
         )

@@ -1,7 +1,7 @@
 from schedulers.base import BaseScheduler
 
 
-class FCFSScheduler(BaseScheduler):
+class PriorityScheduler(BaseScheduler):
 
     def select_process(
         self,
@@ -16,5 +16,8 @@ class FCFSScheduler(BaseScheduler):
 
         return min(
             ready_queue,
-            key=lambda p: p.ready_since
+            key=lambda p: (
+                p.priority,
+                p.ready_since
+            )
         )

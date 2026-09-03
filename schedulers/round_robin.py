@@ -1,99 +1,60 @@
 from collections import deque
 
+from schedulers.base import BaseScheduler
 
-def round_robin(processes, quantum=2):
 
-    processes = sorted(
-        processes,
-        key=lambda p: p.arrival_time
-    )
+class RoundRobinScheduler(BaseScheduler):
 
-    ready_queue = deque()
+    def __init__(self, quantum=2):
+        self.quantum = quantum
 
-    current_time = 0
-    index = 0
+        # Simulator reads this
+        self.current_quantum = quantum
 
-    completed = []
-    timeline = []
+        self.queue = deque()
 
-    while len(completed) < len(processes):
 
-        while (
-            index < len(processes)
-            and
-            processes[index].arrival_time <= current_time
-        ):
-            ready_queue.append(
-                processes[index]
-            )
-            index += 1
+    def select_process(
+        self,
+        ready_queue,
+        current_time,
+        system_state=None
+    ):
 
         if not ready_queue:
+            return None
 
-            if index < len(processes):
-                current_time = (
-                    processes[index].arrival_time
-                )
-                continue
 
-            break
+        # Add new processes
+        for process in ready_queue:
 
-        process = ready_queue.popleft()
+            if process not in self.queue:
+                self.queue.append(process)
 
-        if process.start_time is None:
-            process.start_time = current_time
 
-        execution_time = min(
-            quantum,
-            process.remaining_time
+        # Remove terminated/not-ready processes
+        self.queue = deque(
+            [
+                p
+                for p in self.queue
+                if p in ready_queue
+            ]
         )
 
-        start = current_time
 
-        current_time += execution_time
+        if not self.queue:
+            return None
 
-        process.remaining_time -= (
-            execution_time
-        )
 
-        end = current_time
+        process = self.queue.popleft()
 
-        timeline.append(
-            (process.pid, start, end)
-        )
+        return process
 
-        while (
-            index < len(processes)
-            and
-            processes[index].arrival_time <= current_time
-        ):
-            ready_queue.append(
-                processes[index]
-            )
-            index += 1
 
-        if process.remaining_time == 0:
+    def on_process_end(
+        self,
+        process,
+        current_time
+    ):
 
-            process.finish_time = current_time
-
-            process.turnaround_time = (
-                process.finish_time
-                - process.arrival_time
-            )
-
-            process.waiting_time = (
-                process.turnaround_time
-                - process.burst_time
-            )
-
-            process.response_time = (
-                process.start_time
-                - process.arrival_time
-            )
-
-            completed.append(process)
-
-        else:
-            ready_queue.append(process)
-
-    return completed, timeline
+        pass
